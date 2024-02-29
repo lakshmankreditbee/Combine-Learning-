@@ -123,7 +123,7 @@ chatRoomSubscriber.subject
         print("message received: \(message)")
     }
 
-// Happy flow (uncomment and run)
+// Happy flow (uncomment and run, understand the lifecycle of a subject then you will understand the why I have commented)
 //chatRoomSubscriber.simulateMessage()
 //chatRoomSubscriber.closeRoom()
 
@@ -133,6 +133,75 @@ chatRoomSubscriber.simulateError()
 
 print("**************************")
 
-//CurrentValueSubject
+/*
+ A CurrentValueSubject is initialized with an initial value. Unlike with a PassthroughSubject, new subscribers will receive this initial value upon subscribing
+ */
 
+struct Uploader {
+    enum State {
+        case pending, uploading, finished
+    }
+    
+    enum Error: Swift.Error {
+        case uploadFailed
+    }
+    
+    let subject = CurrentValueSubject<State, Error>(.pending)
+    
+    func startUpload() {
+        subject.send(.uploading)
+    }
+    
+    func finishUpload() {
+        subject.value = .finished
+        subject.send(completion: .finished)
+    }
+    
+    func failUpload() {
+        subject.send(completion: .failure(.uploadFailed))
+    }
+}
+
+let uploaderSubscriber = Uploader()
+uploaderSubscriber.subject.sink { completion in
+    switch(completion) {
+    case .finished:
+        print("received finished")
+    case .failure(let error):
+        print("received error \(error)")
+    }
+} receiveValue: { message in
+    print("received message \(message)")
+}
+
+/*
+ The pending state is the initial state set and is received directly upon subscribing. Once the upload completes, the final finished state is passed through, and the stream is closed through a finished event.
+ */
+
+//understand the lifecycle of a subject then you will understand the why I have commented
+//uploaderSubscriber.startUpload()
+//uploaderSubscriber.finishUpload()
+
+uploaderSubscriber.startUpload()
+uploaderSubscriber.failUpload()
+
+print("*********************************************")
+
+/*
+ Understanding the lifecycle of a subject -
+ It’s important to understand the lifecycle of a subject. Whenever a finished event is received, the subject will no longer pass through any new values.
+ */
+
+print("******************************************")
+
+/*
+ What are the difference between a PassthroughSubject and a CurrentValueSubject?
+ Best this can be understood by an analogy,
+ 
+ A PassthroughSubject is like a doorbell push button
+ When someone rings the bell, you’re only notified when you’re at home
+ 
+ A CurrentValueSubject is like a light switch
+ When a light is turned on while you’re away, you’ll still notice it was turned on when you get back home.
+ */
 
